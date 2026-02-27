@@ -163,8 +163,9 @@ _default_config = {
     "dump_protocol_version": PROTOCOL_VERSION,
     # How many tasks belong to one process. Recommend 1 for high-frequency data and None for daily data.
     "maxtasksperchild": None,
-    # If joblib_backend is None, use loky
-    "joblib_backend": "multiprocessing",
+    # Use loky backend by default as it handles Unicode paths better on Windows
+    # multiprocessing backend has issues with non-ASCII characters in temp paths
+    "joblib_backend": "loky",
     "default_disk_cache": 1,  # 0:skip/1:use
     "mem_cache_size_limit": 500,
     "mem_cache_limit_type": "length",

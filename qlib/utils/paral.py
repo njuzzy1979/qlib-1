@@ -5,6 +5,10 @@ import threading
 from functools import partial
 from threading import Thread
 from typing import Callable, Text, Union
+import tempfile
+import os
+from pathlib import Path
+import platform
 
 import joblib
 from joblib import Parallel, delayed
@@ -17,8 +21,31 @@ import concurrent
 from qlib.config import C, QlibConfig
 
 
+def _ensure_ascii_tempdir():
+    """Ensure temp directory contains only ASCII characters for Windows multiprocessing compatibility.
+
+    On Windows, multiprocessing.resource_tracker uses ASCII encoding and will fail if the
+    temp directory path contains non-ASCII characters (e.g., Chinese characters in username).
+    """
+    if platform.system() == "Windows":
+        current_temp = tempfile.gettempdir()
+        try:
+            current_temp.encode('ascii')
+        except UnicodeEncodeError:
+            # Current temp directory has non-ASCII characters, create a new one
+            new_temp = Path("C:/temp/qlib_tmp")
+            new_temp.mkdir(parents=True, exist_ok=True)
+            os.environ['TEMP'] = str(new_temp)
+            os.environ['TMP'] = str(new_temp)
+            # Force tempfile to re-evaluate the temp directory
+            tempfile.tempdir = None
+
+
 class ParallelExt(Parallel):
     def __init__(self, *args, **kwargs):
+        # Ensure ASCII-only temp directory before initializing Parallel
+        _ensure_ascii_tempdir()
+
         maxtasksperchild = kwargs.pop("maxtasksperchild", None)
         super(ParallelExt, self).__init__(*args, **kwargs)
         if isinstance(self._backend, MultiprocessingBackend):
